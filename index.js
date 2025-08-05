@@ -2,8 +2,13 @@ const mineflayer = require('mineflayer');
 const express = require('express');
 const app = express();
 
-app.get('/', (req, res) => res.send('Bot aktif!'));
-app.listen(3000, () => console.log('Web sunucusu çalışıyor.'));
+app.get('/', (req, res) => {
+  res.send('Bot aktif!');
+});
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log('Sunucu çalışıyor');
+});
 
 const options = {
   host: 'codexsmp.aternos.me',
