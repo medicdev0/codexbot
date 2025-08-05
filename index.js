@@ -2,7 +2,7 @@ const mineflayer = require('mineflayer');
 const express = require('express');
 const app = express();
 
-// Basit web sunucusu
+// Express sunucusu Railway'in konteyneri durdurmaması için
 app.get('/', (req, res) => {
   res.send('Bot aktif!');
 });
@@ -16,49 +16,72 @@ const options = {
   host: 'codexsmp.aternos.me',
   port: 25565,
   username: 'CodexSMP',
-  version: '1.21.4' // 🔥 En önemli kısım: doğru sürüm
+  version: '1.21.4'
 };
 
 let bot;
 
 function createBot() {
-  bot = mineflayer.createBot(options);
+  try {
+    bot = mineflayer.createBot(options);
 
-  bot.once('spawn', () => {
-    console.log('Bot sunucuya bağlandı.');
+    bot.once('spawn', () => {
+      console.log('Bot sunucuya bağlandı.');
 
-    // Eğer sunucu AuthMe veya benzeri bir /login komutu istiyorsa
-    bot.chat('/login medicdev8123@');
+      // Giriş komutu (sunucu AuthMe vb. kullanıyorsa)
+      bot.chat('/login medicdev8123@');
 
-    // Zıplama döngüsü
-    setTimeout(() => {
-      bot.jumpInterval = setInterval(() => {
-        bot.setControlState('jump', true);
-        setTimeout(() => {
-          bot.setControlState('jump', false);
-        }, 500);
-      }, 2000);
-    }, 3000);
-  });
+      // Bot zıplama hareketi yapar
+      setTimeout(() => {
+        bot.jumpInterval = setInterval(() => {
+          bot.setControlState('jump', true);
+          setTimeout(() => {
+            bot.setControlState('jump', false);
+          }, 500);
+        }, 2000);
+      }, 3000);
+    });
 
-  bot.on('end', () => {
-    console.log('Bağlantı koptu, yeniden bağlanılıyor...');
-    clearInterval(bot.jumpInterval);
-    setTimeout(createBot, 5000);
-  });
+    bot.on('end', () => {
+      console.log('Bağlantı koptu, yeniden bağlanılıyor...');
+      clearInterval(bot.jumpInterval);
+      setTimeout(createBot, 5000); // yeniden başlat
+    });
 
-  bot.on('error', (err) => {
-    console.log('Hata:', err);
-  });
+    bot.on('error', (err) => {
+      if (err.code === 'ECONNRESET') {
+        console.log('⚠️ Sunucu bağlantıyı sıfırladı (ECONNRESET).');
+      } else {
+        console.error('Bot hatası:', err);
+      }
+    });
 
-  // Chat mesajlarını güvenli bir şekilde logla
-  bot.on('message', (jsonMsg) => {
-    try {
-      console.log("Sohbet:", jsonMsg.toString());
-    } catch (e) {
-      console.log("Sohbet (JSON):", JSON.stringify(jsonMsg));
-    }
-  });
+    bot.on('message', (jsonMsg) => {
+      try {
+        console.log("Sohbet:", jsonMsg.toString());
+      } catch (e) {
+        console.log("Sohbet (JSON):", JSON.stringify(jsonMsg));
+      }
+    });
+
+  } catch (err) {
+    console.error('createBot hatası:', err);
+    setTimeout(createBot, 5000); // hata alırsa tekrar dene
+  }
 }
+
+// Hataların Railway konteynerini durdurmaması için:
+process.on('uncaughtException', (err) => {
+  console.log('⛔ Yakalanmamış Hata:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('⛔ Yakalanmamış Promise:', reason);
+});
+
+// SIGTERM sinyali gelirse Railway'e "hala canlıyım" de
+process.on('SIGTERM', () => {
+  console.log('SIGTERM alındı ama konteyner devam ediyor.');
+});
 
 createBot();
